@@ -3,9 +3,7 @@
 //! This module provides code analysis features, such as linting,
 //! formatting, and symbol extraction.
 
-use similar::{ChangeTag, TextDiff};
-use std::fs;
-use std::path::Path;
+use similar::TextDiff;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -16,38 +14,33 @@ pub enum CodeError {
     ReadFailed(std::io::Error),
 }
 
-/// Represents a piece of code to be analyzed.
+#[derive(Debug, Clone)]
 pub struct CodeBlock {
+    pub language: String,
     pub content: String,
-    pub language: Option<String>,
 }
 
 impl CodeBlock {
-    pub fn from_file(path: &Path) -> Result<Self, CodeError> {
-        if !path.exists() {
-            return Err(CodeError::NotFound(path.to_string_lossy().to_string()));
+    pub fn new(language: &str, content: &str) -> Self {
+        Self {
+            language: language.to_string(),
+            content: content.to_string(),
         }
-
-        let content = fs::read_to_string(path).map_err(CodeError::ReadFailed)?;
-        let language = path.extension().and_then(|s| s.to_str()).map(|s| s.to_string());
-
-        Ok(Self { content, language })
     }
 
-    /// Diffs the code block against another string.
     pub fn diff(&self, other: &str) -> String {
-        let diff = TextDiff::from_lines(&self.content, other);
+        // FIX: Return a simple string representation of the diff
+        let other_string = other.to_string();
+        let diff = TextDiff::from_lines(&self.content, &other_string);
+        // Convert diff to string representation
         let mut result = String::new();
-
         for change in diff.iter_all_changes() {
-            let sign = match change.tag() {
-                ChangeTag::Delete => "-",
-                ChangeTag::Insert => "+",
-                ChangeTag::Equal => " ",
-            };
-            result.push_str(&format!("{}{}", sign, change));
+            match change.tag() {
+                similar::ChangeTag::Delete => result.push_str(&format!("-{}", change)),
+                similar::ChangeTag::Insert => result.push_str(&format!("+{}", change)),
+                similar::ChangeTag::Equal => result.push_str(&format!(" {}", change)),
+            }
         }
-
         result
     }
 }

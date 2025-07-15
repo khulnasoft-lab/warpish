@@ -19,7 +19,7 @@ pub struct MultipleChoiceQuestion {
     pub time_limit: Option<u32>, // in seconds
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum QuestionDifficulty {
     Easy,
     Medium,
@@ -232,6 +232,9 @@ impl Default for Quiz {
         Self::new()
     }
 }
+
+// Type alias for backward compatibility
+pub type MCQManager = Quiz;
 
 #[cfg(test)]
 mod tests {

@@ -6,4 +6,4 @@ file = "src/schema.rs"
 custom_type_derives = ["diesel::query_builder::QueryId", "Clone"]
 
 [migrations_directory]
-dir = "/Users/mdsulaiman/Desktop/warpish_terminal_v2/migrations"
+dir = "migrations"

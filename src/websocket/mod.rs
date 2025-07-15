@@ -2,17 +2,16 @@
 //!
 //! This module provides real-time communication support using WebSockets.
 
+use anyhow::Result;
 use futures_util::{StreamExt, SinkExt};
 use tokio::net::TcpStream;
-use tokio_tungstenite::{connect_async, tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::{connect_async, tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream, tungstenite::Error as WsError};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum WebSocketError {
-    #[error("Failed to connect to WebSocket: {0}")]
-    ConnectFailed(tokio_tungstenite::tungstenite::Error),
-    #[error("WebSocket error: {0}")]
-    SocketError(tokio_tungstenite::tungstenite::Error),
+    #[error("Socket error: {0}")]
+    SocketError(#[from] WsError), // FIX: Implemented From trait
 }
 
 pub struct WebSocketClient {
@@ -20,22 +19,25 @@ pub struct WebSocketClient {
 }
 
 impl WebSocketClient {
-    pub async fn connect(url: &str) -> Result<Self, WebSocketError> {
-        let (socket, _response) = connect_async(url)
-            .await
-            .map_err(WebSocketError::ConnectFailed)?;
+    pub async fn new(url: &str) -> Result<Self, WebSocketError> {
+        let (socket, _) = connect_async(url).await?;
         Ok(Self { socket })
     }
 
-    pub async fn send(&mut self, message: &str) -> Result<(), WebSocketError> {
+    pub async fn send_message(&mut self, message: &str) -> Result<(), WebSocketError> {
         self.socket
             .send(Message::Text(message.to_string()))
-            .await
-            .map_err(WebSocketError::SocketError)
+            .await?;
+        Ok(())
     }
 
-    pub async fn recv(&mut self) -> Option<Result<Message, WebSocketError>> {
-        self.socket.next().await.map(|res| res.map_err(WebSocketError::SocketError))
+    pub async fn receive_message(&mut self) -> Result<Option<String>, WebSocketError> {
+        match self.socket.next().await {
+            Some(Ok(Message::Text(text))) => Ok(Some(text)),
+            Some(Ok(_)) => Ok(None), // Ignore other message types for now
+            Some(Err(e)) => Err(e.into()),
+            None => Ok(None),
+        }
     }
 }
 
@@ -65,13 +67,13 @@ mod tests {
             echo_server(ws_stream).await;
         });
 
-        let mut client = WebSocketClient::connect(&format!("ws://{}", addr))
+        let mut client = WebSocketClient::new(&format!("ws://{}", addr))
             .await
             .unwrap();
 
-        client.send("hello").await.unwrap();
+        client.send_message("hello").await.unwrap();
 
-        let msg = client.recv().await.unwrap().unwrap();
-        assert_eq!(msg.to_text().unwrap(), "hello");
+        let msg = client.receive_message().await.unwrap().unwrap();
+        assert_eq!(msg, "hello");
     }
 }

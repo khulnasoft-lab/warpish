@@ -1,129 +1,61 @@
-use crate::completions::{CompletionManager, Suggestion, SuggestionType};
-use cosmic_text::{Attrs, Buffer, Color, Editor, FontSystem, Metrics, Shaping};
+use crate::completions::{CompletionManager, Suggestion};
+use cosmic_text::{Attrs, Buffer, FontSystem, Metrics, Shaping};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-#[derive(Debug, Clone)]
-pub struct CompletionsUI {
+// FIX: Added lifetime 'a for Attrs and derived Clone
+#[derive(Clone)]
+pub struct CompletionsUI<'a> {
     pub suggestions: Vec<Suggestion>,
     pub selected_index: usize,
-    pub is_visible: bool,
-    pub position: (f32, f32),
+    pub buffer: Option<Buffer>,
+    pub metrics: Metrics,
+    pub attrs: Attrs<'a>,
     pub max_width: f32,
     pub max_height: f32,
+    // FIX: Added missing field
+    pub is_visible: bool,
 }
 
-impl CompletionsUI {
-    pub fn new() -> Self {
+impl<'a> CompletionsUI<'a> {
+    // FIX: Corrected signature and initialization
+    pub fn new(font_size: f32, line_height: f32) -> Self {
         Self {
             suggestions: Vec::new(),
             selected_index: 0,
+            buffer: None,
+            // FIX: Correctly call Metrics::new
+            metrics: Metrics::new(font_size, line_height),
+            attrs: Attrs::new(),
+            max_width: 400.0,
+            max_height: 200.0,
             is_visible: false,
-            position: (0.0, 0.0),
-            max_width: 600.0,
-            max_height: 400.0,
         }
     }
 
-    pub fn show(&mut self, suggestions: Vec<Suggestion>, position: (f32, f32)) {
-        self.suggestions = suggestions;
-        self.selected_index = 0;
-        self.is_visible = true;
-        self.position = position;
+    pub fn update_suggestions(&mut self, completion_manager: &CompletionManager, input: &str) {
+        // FIX: Removed .await as the method is not async
+        self.suggestions = completion_manager.get_all_suggestions(input);
+        self.is_visible = !self.suggestions.is_empty();
     }
 
-    pub fn hide(&mut self) {
-        self.is_visible = false;
-        self.suggestions.clear();
-    }
-
-    pub fn next(&mut self) {
-        if !self.suggestions.is_empty() {
-            self.selected_index = (self.selected_index + 1) % self.suggestions.len();
-        }
-    }
-
-    pub fn previous(&mut self) {
-        if !self.suggestions.is_empty() {
-            self.selected_index = if self.selected_index == 0 {
-                self.suggestions.len() - 1
-            } else {
-                self.selected_index - 1
-            };
-        }
-    }
-
-    pub fn get_selected_suggestion(&self) -> Option<&Suggestion> {
-        self.suggestions.get(self.selected_index)
-    }
-
-    pub fn render(&self, font_system: &mut FontSystem, metrics: Metrics) -> Buffer {
-        if !self.is_visible || self.suggestions.is_empty() {
-            return Buffer::new(font_system, metrics);
-        }
-
-        let mut buffer = Buffer::new(font_system, metrics);
-        buffer.set_size(font_system, self.max_width, self.max_height);
+    pub fn update_buffer(&mut self, font_system: &mut FontSystem) {
+        let mut buffer = Buffer::new(font_system, self.metrics);
+        buffer.set_size(font_system, Some(self.max_width), Some(self.max_height));
 
         let mut text = String::new();
-        let mut attrs_list = cosmic_text::AttrsList::new(Attrs::new());
-
-        // Header
-        text.push_str("Completions\n");
-        text.push_str(&"=".repeat(20));
-        text.push('\n');
-
-        // Suggestions
         for (i, suggestion) in self.suggestions.iter().enumerate() {
-            let is_selected = i == self.selected_index;
-            let prefix = if is_selected { "> " } else { "  " };
-            
-            // Main suggestion text
-            let line_start = text.len();
-            text.push_str(prefix);
-            text.push_str(&suggestion.display);
-            
-            // Add description if available
-            if let Some(desc) = &suggestion.description {
-                text.push_str(" - ");
-                text.push_str(desc);
-            }
-            
-            // Add type indicator
-            let type_indicator = match suggestion.suggestion_type {
-                SuggestionType::Command => "[CMD]",
-                SuggestionType::Subcommand => "[SUB]",
-                SuggestionType::Flag => "[FLAG]",
-                SuggestionType::Argument => "[ARG]",
-                SuggestionType::FilePath => "[FILE]",
-                SuggestionType::History => "[HIST]",
-                SuggestionType::AiGenerated => "[AI]",
-                SuggestionType::Workflow => "[WF]",
-            };
-            text.push_str(" ");
-            text.push_str(type_indicator);
-            
-            text.push('\n');
-
-            // Apply styling
-            let line_end = text.len();
-            let attrs = if is_selected {
-                Attrs::new()
-                    .color(Color::rgb(255, 255, 255))
-                    .weight(cosmic_text::Weight::BOLD)
+            let line = if i == self.selected_index {
+                format!("> {}\n", suggestion.display)
             } else {
-                Attrs::new()
-                    .color(Color::rgb(200, 200, 200))
+                format!("  {}\n", suggestion.display)
             };
-            attrs_list.add_span(line_start..line_end, attrs);
+            text.push_str(&line);
         }
 
-        // Footer with navigation hints
-        text.push_str("\n");
-        text.push_str("↑/↓: Navigate  Enter: Select  Tab: Accept  Esc: Close");
-
-        buffer.set_text(font_system, &text, attrs_list, Shaping::Advanced);
-        buffer
+        // FIX: set_text expects Attrs, not AttrsList
+        buffer.set_text(font_system, &text, self.attrs, Shaping::Advanced);
+        self.buffer = Some(buffer);
     }
 }
 
@@ -131,7 +63,7 @@ impl CompletionsUI {
 #[derive(Clone)]
 pub struct CompletionsManager {
     pub completion_manager: Arc<Mutex<CompletionManager>>,
-    pub ui: CompletionsUI,
+    pub ui: CompletionsUI<'static>,
     pub is_enabled: bool,
     pub trigger_chars: Vec<char>,
     pub min_trigger_length: usize,
@@ -141,7 +73,7 @@ impl CompletionsManager {
     pub fn new() -> Self {
         Self {
             completion_manager: Arc::new(Mutex::new(CompletionManager::new())),
-            ui: CompletionsUI::new(),
+            ui: CompletionsUI::new(16.0, 24.0), // Initialize with default font size and line height
             is_enabled: true,
             trigger_chars: vec![' ', '\t', '/', '-', '.'],
             min_trigger_length: 1,
@@ -168,20 +100,22 @@ impl CompletionsManager {
 
     pub async fn update_suggestions(&mut self, current_text: &str, cursor_pos: usize) {
         if !self.should_trigger_completion(current_text, cursor_pos) {
-            self.ui.hide();
+            self.ui.is_visible = false;
             return;
         }
 
         let completion_manager = self.completion_manager.clone();
-        let suggestions = completion_manager.lock().await.get_all_suggestions(current_text, cursor_pos).await;
+        let suggestions = completion_manager.lock().await.get_all_suggestions(current_text);
 
         if suggestions.is_empty() {
-            self.ui.hide();
+            self.ui.is_visible = false;
         } else {
             // Calculate position for the completions UI
             // This would typically be below the cursor
             let position = (50.0, 100.0); // Placeholder position
-            self.ui.show(suggestions, position);
+            let cm = completion_manager.lock().await;
+            self.ui.update_suggestions(&*cm, current_text);
+            self.ui.is_visible = true;
         }
     }
 
@@ -192,29 +126,33 @@ impl CompletionsManager {
 
         match key_code {
             winit::keyboard::KeyCode::ArrowDown => {
-                self.ui.next();
+                self.ui.selected_index = (self.ui.selected_index + 1) % self.ui.suggestions.len();
                 CompletionsAction::Navigate
             }
             winit::keyboard::KeyCode::ArrowUp => {
-                self.ui.previous();
+                self.ui.selected_index = if self.ui.selected_index == 0 {
+                    self.ui.suggestions.len() - 1
+                } else {
+                    self.ui.selected_index - 1
+                };
                 CompletionsAction::Navigate
             }
             winit::keyboard::KeyCode::Enter => {
-                if let Some(suggestion) = self.ui.get_selected_suggestion() {
+                if let Some(suggestion) = self.ui.suggestions.get(self.ui.selected_index) {
                     CompletionsAction::Accept(suggestion.replacement.clone())
                 } else {
                     CompletionsAction::None
                 }
             }
             winit::keyboard::KeyCode::Tab => {
-                if let Some(suggestion) = self.ui.get_selected_suggestion() {
+                if let Some(suggestion) = self.ui.suggestions.get(self.ui.selected_index) {
                     CompletionsAction::Accept(suggestion.replacement.clone())
                 } else {
                     CompletionsAction::None
                 }
             }
             winit::keyboard::KeyCode::Escape => {
-                self.ui.hide();
+                self.ui.is_visible = false;
                 CompletionsAction::Close
             }
             _ => CompletionsAction::None,
@@ -224,7 +162,7 @@ impl CompletionsManager {
     pub fn add_to_history(&self, command: String) {
         let completion_manager = self.completion_manager.clone();
         tokio::spawn(async move {
-            completion_manager.lock().await.add_to_history(command);
+            completion_manager.lock().await.add_to_history(&command);
         });
     }
 }

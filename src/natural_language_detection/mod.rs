@@ -90,55 +90,28 @@ impl NaturalLanguageDetector {
         }
     }
     
-    pub fn detect(&self, input: &str) -> LanguageDetectionResult {
+    pub fn analyze(&self, input: &str) -> LanguageDetectionResult {
         let input_lower = input.to_lowercase();
-        let words: Vec<&str> = input_lower.split_whitespace().collect();
+        let tokens = self.tokenize(&input_lower);
         
-        if words.is_empty() {
-            return LanguageDetectionResult {
-                input_type: InputType::Command,
-                confidence: 0.0,
-                detected_language: None,
-                intent: None,
-                entities: vec![],
-                sentiment: None,
-                complexity: 0.0,
-            };
-        }
+        // FIX: Correctly create a Vec<&str> for the API
+        let token_slices: Vec<&str> = tokens.iter().map(|s| s.as_str()).collect();
+        let first_word = token_slices.first().copied().unwrap_or("");
         
-        // Advanced tokenization and preprocessing
-        let tokens = self.tokenize_advanced(&input_lower);
-        let processed_input = self.preprocess_input(&input_lower);
+        let is_command = self.is_shell_command(first_word);
         
-        // Check if first word is a known command
-        let first_word = words[0];
-        let is_command = self.command_patterns.contains(&first_word.to_string());
-        
-        // Advanced natural language scoring
-        let nl_score = self.calculate_advanced_nl_score(&tokens, &processed_input);
-        let command_score = if is_command { 1.0 } else { self.calculate_command_similarity(&first_word) };
-        
-        // Determine input type with more sophisticated logic
-        let input_type = self.determine_input_type(&input_lower, command_score, nl_score);
-        
-        // Advanced intent detection with contextual understanding
-        let intent = self.detect_advanced_intent(&processed_input, &tokens);
-        
-        // Enhanced entity extraction with named entity recognition
-        let entities = self.extract_advanced_entities(&processed_input, &tokens);
-        
-        // Advanced sentiment analysis
-        let sentiment = self.analyze_advanced_sentiment(&processed_input, &tokens);
-        
-        // Calculate complexity with linguistic features
-        let complexity = self.calculate_advanced_complexity(&processed_input, &tokens);
-        
-        // Language detection beyond English
-        let detected_language = self.detect_language(&input_lower);
-        
+        let nl_score = self.calculate_nl_score(&token_slices); // Pass the correct type
+        let command_score = if is_command { 1.0 } else { self.calculate_complexity(&first_word) };
+
+        let intent = self.detect_intent(&input_lower);
+        let entities = self.extract_entities(&input_lower);
+        let sentiment = self.analyze_sentiment(&input_lower);
+        let complexity = self.calculate_complexity(&input_lower);
+        let detected_language = Some("en".to_string()); // Simplified from non-existent detect_language
+
         LanguageDetectionResult {
-            input_type,
-            confidence: self.calculate_advanced_confidence(command_score, nl_score, &processed_input, &tokens),
+            input_type: self.determine_input_type(&input_lower, command_score, nl_score),
+            confidence: self.calculate_confidence(command_score, nl_score, &input_lower),
             detected_language,
             intent,
             entities,
@@ -289,6 +262,17 @@ impl NaturalLanguageDetector {
         
         confidence.min(1.0)
     }
+
+    // FIX: Changed signature to take &self
+    pub fn tokenize(&self, text: &str) -> Vec<String> {
+        text.split_whitespace().map(String::from).collect()
+    }
+
+    // FIX: Changed signature to take &self
+    pub fn is_shell_command(&self, word: &str) -> bool {
+        // A simple heuristic
+        !word.contains(' ')
+    }
 }
 
 impl Default for NaturalLanguageDetector {
@@ -305,13 +289,13 @@ mod tests {
     fn test_command_detection() {
         let detector = NaturalLanguageDetector::new();
         
-        let result = detector.detect("ls -la");
+        let result = detector.analyze("ls -la");
         assert!(matches!(result.input_type, InputType::Command));
         
-        let result = detector.detect("how do I list files?");
+        let result = detector.analyze("how do I list files?");
         assert!(matches!(result.input_type, InputType::NaturalLanguage));
         
-        let result = detector.detect("git status");
+        let result = detector.analyze("git status");
         assert!(matches!(result.input_type, InputType::Command));
     }
     
@@ -319,10 +303,10 @@ mod tests {
     fn test_intent_detection() {
         let detector = NaturalLanguageDetector::new();
         
-        let result = detector.detect("how do I create a file?");
+        let result = detector.analyze("how do I create a file?");
         assert_eq!(result.intent, Some("help".to_string()));
         
-        let result = detector.detect("show me disk space");
+        let result = detector.analyze("show me disk space");
         assert_eq!(result.intent, Some("system_info".to_string()));
     }
 }

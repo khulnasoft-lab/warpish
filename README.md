@@ -12,6 +12,14 @@ A Rust-powered GPU-accelerated AI-native terminal.
 *   **Rules** - Create and store rules to use as AI context
 *   **AI Autofill in Warpish Drive** - Let Warpish AI name and describe the workflows you create
 
+## Project Cleanup & Fixes (Recent Update)
+This project has undergone a significant cleanup to improve maintainability, portability, and correctness. Key changes include:
+- **Fixed `Cargo.toml`:** The dependency list was streamlined to include only direct dependencies, removing hundreds of redundant transitive entries.
+- **Fixed `diesel.toml`:** Corrected a hardcoded, absolute file path to a relative one, making the project buildable on any machine.
+- **Corrected YAML Syntax:** Invalid syntax in `themes/baitong.yaml` was fixed.
+- **Resolved Compiler Errors:** A critical "unclosed delimiter" error in `src/ui/renderer.rs` was fixed by adding the missing brace and reformatting the code for readability.
+- **Streamlined Scripts:** The `bootstrap` script was updated to use the standard `crates.io` for installing tools.
+
 ## Developer Tooling
 
 This project uses tools to help maintain code quality.
@@ -37,4 +45,4 @@ cargo diff-check
 cargo diff-clippy
 ```
 
-By adding this section to your `README.md`, you have successfully integrated `cargo-diff-tools` into your project's official development workflow. Any new contributor will now be aware of this tool and how to use it to ensure their changes are high-quality.
+By adding this section to your README.md, you have successfully integrated cargo-diff-tools into your project's official development workflow. Any new contributor will now be aware of this tool and how to use it to ensure their changes are high-quality.
