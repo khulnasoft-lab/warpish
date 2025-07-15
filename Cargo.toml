@@ -30,7 +30,7 @@ global-hotkey = "0.5"
 rust-embed = { version = "8.3", features = ["debug-embed"] }
 arboard = {git = "https://github.com/warpdotdev/arboard", rev ="c922114ac898d26dce0914176f3b8c2bf60c8137"}
 yaml-rust = "0.4"
-pprof = { version = "0.13", features = ["flamegraph"] }
+pprof = { version = "0.14", features = ["flamegraph"] }
 lazy_static = "1.4"
 serde_yaml = "0.9"
 uuid = { version = "1.8", features = ["v4", "serde"] }
