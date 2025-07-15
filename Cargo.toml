@@ -51,7 +51,7 @@ addr2line = { git = "https://github.com/gimli-rs/addr2line" }
 adler = { git = "https://github.com/jonas-schievink/adler.git" }
 adler32 = "1.2.0"
 aho-corasick = "1.1.0"
-analytics = "0.1.0"
+analytics = "0.2.0"
 ansi_term = "0.12.1"
 anyhow = "1.0"
 arrayref = "0.3.7"
