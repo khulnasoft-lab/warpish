@@ -9,23 +9,19 @@ colors:
     text: '#112a2a'
     cursor: '#ff00ff'
   search:
-    matches: !!python/object/new:toml.decoder.DynamicInlineTableDict
-      dictitems:
-        foreground: '#000000'
-        background: '#1AE642'
-    focused_match: !!python/object/new:toml.decoder.DynamicInlineTableDict
-      dictitems:
-        foreground: '#000000'
-        background: '#ff00ff'
+    matches:
+      foreground: '#000000'
+      background: '#1AE642'
+    focused_match:
+      foreground: '#000000'
+      background: '#ff00ff'
   hints:
-    start: !!python/object/new:toml.decoder.DynamicInlineTableDict
-      dictitems:
-        foreground: '#1d1f21'
-        background: '#1AE642'
-    end: !!python/object/new:toml.decoder.DynamicInlineTableDict
-      dictitems:
-        foreground: '#1AE642'
-        background: '#1d1f21'
+    start:
+      foreground: '#1d1f21'
+      background: '#1AE642'
+    end:
+      foreground: '#1AE642'
+      background: '#1d1f21'
   line_indicator:
     foreground: '#33ff33'
     background: '#1d1f21'

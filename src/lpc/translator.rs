@@ -1,23 +1,20 @@
+use crate::app::state::{ShellCommand, ShellType};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone)]
-pub struct ShellCommand {
-    pub command: String,
-    pub args: Vec<String>,
-    pub shell: String,
-}
+type TranslationRule = fn(&ShellCommand) -> ShellCommand;
 
 pub struct ShellTranslator {
-    rules: HashMap<String, fn(&ShellCommand) -> ShellCommand>,
+    rules: HashMap<String, TranslationRule>,
 }
 
 impl ShellTranslator {
     pub fn new() -> Self {
-        let mut rules = HashMap::new();
-        rules.insert("bash_to_fish".into(), Self::bash_to_fish);
-        rules.insert("zsh_to_bash".into(), Self::zsh_to_bash);
-        rules.insert("powershell_to_bash".into(), Self::powershell_to_bash);
-        rules.insert("bash_to_powershell".into(), Self::bash_to_powershell);
+        let mut rules: HashMap<String, TranslationRule> = HashMap::new();
+        // FIX: Cast each function pointer to the common type `TranslationRule`.
+        rules.insert("bash_to_fish".into(), Self::bash_to_fish as TranslationRule);
+        rules.insert("zsh_to_bash".into(), Self::zsh_to_bash as TranslationRule);
+        rules.insert("powershell_to_bash".into(), Self::powershell_to_bash as TranslationRule);
+        rules.insert("bash_to_powershell".into(), Self::bash_to_powershell as TranslationRule);
         Self { rules }
     }
 

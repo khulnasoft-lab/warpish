@@ -1,15 +1,61 @@
 use crate::agent::model::ModelId; // Import the new enum
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
-use std::fs;
 use serde::{Deserialize, Serialize};
+use similar::{ChangeTag, TextDiff};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FileDiff {
     pub file_path: String,
+    pub original_content: String,
     pub new_content: String,
+    pub hunks: Vec<Hunk>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct DiffPatch {
+    pub explanation: String,
+    pub diffs: Vec<FileDiff>,
+}
+
+// FIX: ChangeTag now correctly derives Serialize and Deserialize
+// because the `serde` feature is enabled for the `similar` crate.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Hunk {
+    pub tag: ChangeTag,
+    pub original_text: String,
+    pub new_text: String,
+}
+
+impl FileDiff {
+    pub fn from_changes(file_path: &str, old: &str, new: &str) -> Self {
+        let diff = TextDiff::from_lines(old, new);
+        let hunks = diff
+            .iter_all_changes()
+            .map(|change| Hunk {
+                tag: change.tag(),
+                // FIX: Updated to use the new `value()` API from `similar`
+                original_text: if change.tag() != ChangeTag::Insert {
+                    change.value().to_string()
+                } else {
+                    String::new()
+                },
+                new_text: if change.tag() != ChangeTag::Delete {
+                    change.value().to_string()
+                } else {
+                    String::new()
+                },
+            })
+            .collect();
+
+        Self {
+            file_path: file_path.to_string(),
+            original_content: old.to_string(),
+            new_content: new.to_string(),
+            hunks,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AgentResponse {
     SuggestCommand {
@@ -51,8 +97,14 @@ impl SimulatedAgent {
                 match std::fs::read_to_string(file_path) {
                     Ok(original_content) => {
                         let new_content = format!("// This file has been refactored by Warpish AI.\n\n{}", original_content);
+                        let hunks = FileDiff::from_changes(file_path, &original_content, &new_content).hunks;
                         return AgentResponse::ProposeCodeChange {
-                            diffs: vec![FileDiff { file_path: file_path.to_string(), new_content }],
+                            diffs: vec![FileDiff { 
+                                file_path: file_path.to_string(), 
+                                original_content: original_content.clone(),
+                                new_content,
+                                hunks,
+                            }],
                             explanation: format!("I've added a comment to the top of `{}`. Review the changes and apply if correct.", file_path),
                         };
                     }

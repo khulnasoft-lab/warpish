@@ -1,4 +1,5 @@
-use super::{detector::detect_shell, translator::{ShellTranslator, ShellCommand}, validator::validate};
+use super::{detector::detect_shell, translator::ShellTranslator, validator::validate};
+use crate::app::state::ShellCommand;
 
 pub fn process_command(input: &str, current_shell: &str, target_shell: &str) -> Option<String> {
     let detected = detect_shell(input).unwrap_or(current_shell);

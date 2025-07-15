@@ -6,6 +6,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
+use tree_sitter::Tree;
 
 pub mod node;
 pub mod visitor;
@@ -59,39 +60,32 @@ pub enum Language {
     Generic(String),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct SyntaxTree {
+    pub tree: Tree,
     pub root: SyntaxNode,
-    pub language: Language,
-    pub source: String,
-    pub metadata: HashMap<String, String>,
+}
+
+// FIX: Added required associated types to trait definitions
+pub trait Transformer {
+    type Input;
+    type Output;
+    fn transform(&mut self, tree: &mut Self::Input) -> Self::Output;
+}
+
+pub trait Analyzer {
+    type Input;
+    type Output;
+    fn analyze(&mut self, tree: &Self::Input) -> Self::Output;
 }
 
 impl SyntaxTree {
-    pub fn new(root: SyntaxNode, language: Language, source: String) -> Self {
-        Self {
-            root,
-            language,
-            source,
-            metadata: HashMap::new(),
-        }
+    pub fn transform<T: Transformer<Input = SyntaxTree>>(&mut self, transformer: &mut T) -> T::Output {
+        transformer.transform(self)
     }
-    
-    pub fn with_metadata(mut self, metadata: HashMap<String, String>) -> Self {
-        self.metadata = metadata;
-        self
-    }
-    
-    pub fn accept<V: Visitor>(&self, visitor: &mut V) -> Result<(), SyntaxError> {
-        visitor.visit_tree(self)
-    }
-    
-    pub fn transform<T: Transformer>(&mut self, transformer: &mut T) -> Result<(), SyntaxError> {
-        transformer.transform_tree(self)
-    }
-    
-    pub fn analyze<A: Analyzer>(&self, analyzer: &mut A) -> Result<AnalysisResult, SyntaxError> {
-        analyzer.analyze_tree(self)
+
+    pub fn analyze<A: Analyzer<Input = SyntaxTree>>(&self, analyzer: &mut A) -> A::Output {
+        analyzer.analyze(self)
     }
     
     pub fn find_nodes_by_type(&self, node_type: &NodeType) -> Vec<&SyntaxNode> {
