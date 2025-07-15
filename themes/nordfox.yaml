@@ -1,0 +1,59 @@
+colors:
+  primary:
+    background: '#2e3440'
+    foreground: '#cdcecf'
+    dim_foreground: '#abb1bb'
+    bright_foreground: '#c7cdd9'
+  cursor:
+    text: '#cdcecf'
+    cursor: '#abb1bb'
+  vi_mode_cursor:
+    text: '#cdcecf'
+    cursor: '#88c0d0'
+  search:
+    matches:
+      foreground: '#cdcecf'
+      background: '#4f6074'
+    focused_match:
+      foreground: '#cdcecf'
+      background: '#a3be8c'
+  footer_bar:
+    foreground: '#cdcecf'
+    background: '#444c5e'
+  hints:
+    start:
+      foreground: '#cdcecf'
+      background: '#c9826b'
+    end:
+      foreground: '#cdcecf'
+      background: '#444c5e'
+  selection:
+    text: '#cdcecf'
+    background: '#3e4a5b'
+  normal:
+    black: '#3b4252'
+    red: '#bf616a'
+    green: '#a3be8c'
+    yellow: '#ebcb8b'
+    blue: '#81a1c1'
+    magenta: '#b48ead'
+    cyan: '#88c0d0'
+    white: '#e5e9f0'
+  bright:
+    black: '#465780'
+    red: '#d06f79'
+    green: '#b1d196'
+    yellow: '#f0d399'
+    blue: '#8cafd2'
+    magenta: '#c895bf'
+    cyan: '#93ccdc'
+    white: '#e7ecf4'
+  dim:
+    black: '#353a45'
+    red: '#a54e56'
+    green: '#8aa872'
+    yellow: '#d9b263'
+    blue: '#668aab'
+    magenta: '#9d7495'
+    cyan: '#69a7ba'
+    white: '#bbc3d4'

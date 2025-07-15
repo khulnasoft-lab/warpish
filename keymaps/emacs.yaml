@@ -1,0 +1,8 @@
+# Example Emacs-style keybindings for Warpish Terminal
+editor_view:select_left: "ctrl-B"
+editor_view:select_right: "ctrl-F"
+editor:select_to_line_end: "ctrl-E"
+editor:select_to_line_start: "ctrl-A"
+editor_view:select_right_by_word: "meta-F"
+editor_view:select_left_by_word: "meta-B"
+editor_view:cut_word_right: "meta-D" 
